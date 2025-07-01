@@ -103,10 +103,12 @@ int main(void)
   {
     /* USER CODE END WHILE */
 	  switch (mode) {
-	  	case 0:
+	  	case 0: //Turn LED off
 	  		switch_to_gpio();
 	  		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 	  		break;
+	  	case 1:
+
 	  	}
     /* USER CODE BEGIN 3 */
   }
@@ -183,7 +185,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 31999;
+  htim1.Init.Prescaler = 31;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 999;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
