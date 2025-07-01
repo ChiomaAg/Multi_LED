@@ -110,9 +110,24 @@ int main(void)
 	  	  		switch_to_gpio();
 	  	  		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 	  	  		break;
-	  	  	case 1: //Blink every one second
+	  	  	case 1:
+	  	  		switch_to_gpio();
 	  	  		HAL_TIM_Base_Start_IT(&htim2);
 	  	  		break;
+	  	  	case 2:
+	  	  		switch_to_pwm();
+	  	  		HAL_TIM_Base_Stop_IT(&htim2);
+	  	  		static int brightness = 0;
+	  	  	    static int step = 50;
+
+	  	  	    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, brightness);
+	  	  	    brightness += step;
+
+	  	  	    if (brightness >= 1000 || brightness <= 0)
+	  	  	        step = -step;
+
+	  	  	    HAL_Delay(100);
+	  	  	    break;
 
     /* USER CODE BEGIN 3 */
   }
@@ -302,9 +317,9 @@ static void MX_TIM6_Init(void)
 
   /* USER CODE END TIM6_Init 1 */
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 31999;
+  htim6.Init.Prescaler = 319999;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 999;
+  htim6.Init.Period = 199999;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -364,6 +379,28 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void switch_to_gpio(){
+	/*Configure GPIO pin : PA8 */
+	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1); // stop PWM because we're using the same pin for pwm generation
+	  GPIO_InitTypeDef GPIO_InitStruct = {0};
+	  GPIO_InitStruct.Pin = GPIO_PIN_8;
+	  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	  GPIO_InitStruct.Pull = GPIO_NOPULL;
+	  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+
+void switch_to_pwm(void) { //same as this function: HAL_TIM_MspPostInit(&htim1)
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_8;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //alternate function pull push mode
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == GPIO_PIN_10){
 		debounce_flag = 0;
@@ -385,11 +422,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         HAL_TIM_Base_Stop_IT(htim);
         __HAL_TIM_CLEAR_IT(htim, TIM_IT_UPDATE);
     }
-}
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if ((htim->Instance == TIM2) && (mode == 1)){
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+    if ((htim->Instance == TIM2) && (mode == 1)){
+    		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
 	}
 }
 
