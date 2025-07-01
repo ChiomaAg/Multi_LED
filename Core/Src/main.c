@@ -93,6 +93,7 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+  volatile uint8_t mode = 0 //We're gonna use this to track the mode
 
   /* USER CODE END 2 */
 
@@ -305,8 +306,39 @@ static void MX_GPIO_Init(void)
 
   /* USER CODE END MX_GPIO_Init_2 */
 }
+void switch_to_gpio(){
+	/*Configure GPIO pin : PA8 */
+	  HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1); // stop PWM because we're using the same pin for pwm generation
+	  GPIO_InitTypeDef GPIO_InitStruct = {0};
+	  GPIO_InitStruct.Pin = GPIO_PIN_8;
+	  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	  GPIO_InitStruct.Pull = GPIO_NOPULL;
+	  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+
+void switch_to_pwm(void) { //same as this function: HAL_TIM_MspPostInit(&htim1)
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_8;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //alternate function pull push mode
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+}
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if (GPIO_Pin == GPIO_PIN_10){
+		switch mode {
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+		}
+	}
+}
 
 /* USER CODE END 4 */
 
