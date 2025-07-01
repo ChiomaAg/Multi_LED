@@ -331,11 +331,16 @@ void switch_to_pwm(void) { //same as this function: HAL_TIM_MspPostInit(&htim1)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == GPIO_PIN_10){
+		mode = (mode + 1) % 4;
 		switch mode {
 		case 0:
+			switch_to_gpio();
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+			break;
 		case 1:
 		case 2:
 		case 3:
+		default:
 		}
 	}
 }
