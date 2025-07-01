@@ -55,12 +55,14 @@ static void MX_TIM1_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
-
+void switch_to_gpio(void);
+void switch_to_pwm(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+volatile uint8_t mode = 0; //We're gonna use this to track the mode
+volatile uint8_t debounce_flag = 0;
 /* USER CODE END 0 */
 
 /**
@@ -96,8 +98,7 @@ int main(void)
   MX_TIM6_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  volatile uint8_t mode = 0; //We're gonna use this to track the mode
-  volatile uint8_t debounce_flag = 0;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -106,29 +107,33 @@ int main(void)
   {
     /* USER CODE END WHILE */
 	  switch (mode) {
-	  	  	case 0: //Turn LED off
-	  	  		switch_to_gpio();
-	  	  		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-	  	  		break;
-	  	  	case 1:
-	  	  		switch_to_gpio();
-	  	  		HAL_TIM_Base_Start_IT(&htim2);
-	  	  		break;
-	  	  	case 2:
-	  	  		switch_to_pwm();
-	  	  		HAL_TIM_Base_Stop_IT(&htim2);
-	  	  		static int brightness = 0;
-	  	  	    static int step = 50;
+	  	  	  	case 0: //Turn LED off
+	  	  	  		switch_to_gpio();
+	  	  	  		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+	  	  	  		break;
+	  	  	  	case 1://Toggle every one second
+	  	  	  		switch_to_gpio();
+	  	  	  		HAL_TIM_Base_Start_IT(&htim2);
+	  	  	  		break;
+	  	  	  	case 2: //Fades from dark to light
+	  	  	  		switch_to_pwm();
+	  	  	  		HAL_TIM_Base_Stop_IT(&htim2);
+	  	  	  		static int brightness = 0;
+	  	  	  	    static int step = 50;
 
-	  	  	    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, brightness);
-	  	  	    brightness += step;
+	  	  	  	    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, brightness);
+	  	  	  	    brightness += step;
 
-	  	  	    if (brightness >= 1000 || brightness <= 0)
-	  	  	        step = -step;
-
-	  	  	    HAL_Delay(100);
-	  	  	    break;
-
+	  	  	  	    if (brightness >= 1000 || brightness <= 0){
+	  	  	  	        step = -step;
+	  	  	  	    }
+	  	  	  	    HAL_Delay(100);
+	  	  	  	    break;
+	  	  	  	case 3:
+	  	  	  		switch_to_gpio();
+	  	  	  		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+	  	  	  		break;
+	    }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -210,7 +215,7 @@ static void MX_TIM1_Init(void)
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_OC_Init(&htim1) != HAL_OK)
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -221,14 +226,14 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -317,9 +322,9 @@ static void MX_TIM6_Init(void)
 
   /* USER CODE END TIM6_Init 1 */
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 319999;
+  htim6.Init.Prescaler = 31999;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 199999;
+  htim6.Init.Period = 49;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -359,7 +364,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PA10 */
   GPIO_InitStruct.Pin = GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD3_Pin */
@@ -402,7 +407,8 @@ void switch_to_pwm(void) { //same as this function: HAL_TIM_MspPostInit(&htim1)
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if (GPIO_Pin == GPIO_PIN_10){
+	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+	if (GPIO_Pin == GPIO_PIN_10 && debounce_flag){
 		debounce_flag = 0;
 		mode = (mode + 1) % 4;
 		HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
