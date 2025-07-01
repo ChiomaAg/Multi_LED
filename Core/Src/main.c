@@ -110,7 +110,10 @@ int main(void)
 	  	  		switch_to_gpio();
 	  	  		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 	  	  		break;
-	  	  	case 1:
+	  	  	case 1: //Blink every one second
+	  	  		HAL_TIM_Base_Start_IT(&htim2);
+	  	  		break;
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -384,7 +387,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
 }
 
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if ((htim->Instance == TIM2) && (mode == 1)){
+		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
+	}
+}
 
 
 /* USER CODE END 4 */
