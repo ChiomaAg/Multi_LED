@@ -93,8 +93,8 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
-  volatile uint8_t mode = 0 //We're gonna use this to track the mode
-
+  volatile uint8_t mode = 0; //We're gonna use this to track the mode
+  volatile uint8_t debounce_flag = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -102,7 +102,12 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	  switch (mode) {
+	  	case 0:
+	  		switch_to_gpio();
+	  		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+	  		break;
+	  	}
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -248,7 +253,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 31999;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 999;
+  htim6.Init.Period = 19999;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -331,19 +336,29 @@ void switch_to_pwm(void) { //same as this function: HAL_TIM_MspPostInit(&htim1)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if (GPIO_Pin == GPIO_PIN_10){
+		debounce_flag = 0;
 		mode = (mode + 1) % 4;
-		switch mode {
-		case 0:
-			switch_to_gpio();
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-			break;
-		case 1:
-		case 2:
-		case 3:
-		default:
-		}
+		HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+		HAL_TIM_Base_Start_IT(&htim6);
 	}
+
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    if (htim->Instance == TIM6) {
+        debounce_flag = 1;
+
+        // Re-enable EXTI line
+        HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
+        // Stop timer to save power
+        HAL_TIM_Base_Stop_IT(htim);
+        __HAL_TIM_CLEAR_IT(htim, TIM_IT_UPDATE);
+    }
+}
+
+
+
 
 /* USER CODE END 4 */
 
